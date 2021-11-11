@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from torch.distributions.categorical import Categorical
 
-from modules import PowerPropLinear
+from pp_modules import PowerPropLinear
 
 
 def init_weights(module: nn.Module):
@@ -48,3 +48,29 @@ def accuracy(outputs: torch.Tensor, targets: torch.Tensor):
     """ Accuracy """
     acc = torch.argmax(outputs, dim=1) == targets
     return torch.mean(acc.float())
+
+
+def train(model, data_loader, optimizer, criterion, metric):
+
+    # TODO dynamic epoch and interval
+    epoch = 0
+    interval = 100
+    losses = []
+    accs = []
+
+    for idx, (data, target) in enumerate(data_loader):
+
+        optimizer.zero_grad()
+
+        out = model(data)
+        loss = criterion(out, target)
+        loss.backward()
+
+        optimizer.step()
+
+        acc = metric(out, target)
+        losses.append(loss.item())
+        accs.append(acc.item())
+
+        if idx % interval == 0:
+            print(f'Epoch: [{epoch}][{idx}/{len(data_loader)}]\tLoss {loss.item():.4f}\tAcc {acc.item():.4f}')
