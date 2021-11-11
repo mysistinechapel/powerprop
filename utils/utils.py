@@ -4,11 +4,11 @@ import torch
 import torch.nn as nn
 from torch.distributions.categorical import Categorical
 
-from pp_modules import PowerPropLinear
+from utils.pp_modules import PowerPropLinear, PowerPropConv
 
 
 def init_weights(module: nn.Module):
-    if isinstance(module, PowerPropLinear):
+    if isinstance(module, (PowerPropLinear, PowerPropConv)):
         fan_in = calculate_fan_in(module.w.data)
 
         std = np.sqrt(1. / fan_in)

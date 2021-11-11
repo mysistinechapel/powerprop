@@ -112,7 +112,7 @@ class CNN(nn.Module):
             in_channels = channels
 
         # create FC layers
-        in_features = 512
+        in_features = 512  # TODO update with expected number
         for i, features in enumerate((256, 256, 10)):
             self.fc_layers.append(
                 PowerPropLinear(alpha=alpha, in_features=in_features, out_features=features)
@@ -120,7 +120,9 @@ class CNN(nn.Module):
             in_features = features
 
     def get_weights(self):
-        return [layer.get_weights().numpy() for layer in self._layers.values()]
+        weights = [layer.get_weights().numpy() for layer in self.conv_layers.values()]
+        weights.extend([layer.get_weights().numpy() for layer in self.fc_layers])
+        return weights
 
     def forward(self, inputs, masks=None):
         for i in range(len(self.conv_layers)):
