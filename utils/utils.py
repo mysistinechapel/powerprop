@@ -38,7 +38,7 @@ def calculate_fan_in(tensor: torch.Tensor):
 
 
 def cat_loss(outputs: torch.Tensor, targets: torch.Tensor):
-    """ Loss Function """
+    """ Loss Function (another way to compute cross-entropy) """
     dist = Categorical(logits=outputs)
     loss = -torch.mean(dist.log_prob(targets))
     return loss
@@ -46,8 +46,8 @@ def cat_loss(outputs: torch.Tensor, targets: torch.Tensor):
 
 def accuracy(outputs: torch.Tensor, targets: torch.Tensor):
     """ Accuracy """
-    acc = torch.argmax(outputs, dim=1) == targets
-    return torch.mean(acc.float())
+    acc = (torch.argmax(outputs, dim=1) == targets).float()
+    return torch.mean(acc)
 
 
 def train(model, data_loader, optimizer, criterion, metric):

@@ -47,8 +47,8 @@ train_y = train_data.targets[:-validation_size]
 valid_x = train_data.data[-validation_size:]
 valid_y = train_data.targets[-validation_size:]
 
-test_x = test_data.test_data
-test_y = test_data.test_labels
+test_x = test_data.data
+test_y = test_data.targets
 
 dataloader = DataLoader(TensorDataset(train_x, train_y), batch_size=train_batch_size, shuffle=True)
 
@@ -56,5 +56,6 @@ model = MLP(alpha=alphas[0])
 model.apply(init_weights)
 
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
+CE_loss = torch.nn.CrossEntropyLoss()
 
-train(model, dataloader, optimizer, cat_loss, accuracy)
+train(model, dataloader, optimizer, CE_loss, accuracy)
