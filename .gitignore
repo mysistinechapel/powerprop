@@ -137,4 +137,7 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# Additional files/folders to ignore
 .idea/
+data/
+notebooks/
