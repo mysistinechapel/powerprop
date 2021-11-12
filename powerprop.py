@@ -5,7 +5,7 @@ from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader, TensorDataset
 
 from utils.pp_modules import MLP
-from utils.utils import init_weights, train, cat_loss, accuracy
+from utils.utils import preprocess, train_val_split, init_weights, train, evaluate
 
 # Training Configuration
 model_seed = 0  # @param
@@ -37,15 +37,10 @@ test_data = MNIST(
 )
 
 # reshape and normalize data
-train_data.data = train_data.data.flatten(start_dim=1).float() / 255.
-test_data.data = test_data.data.flatten(start_dim=1).float() / 255.
+train_data.data = preprocess(train_data.data)
+test_data.data = preprocess(test_data.data)
 
-train_x = train_data.data[:-validation_size]
-train_y = train_data.targets[:-validation_size]
-
-# Reserve some data for a validation set
-valid_x = train_data.data[-validation_size:]
-valid_y = train_data.targets[-validation_size:]
+train_x, train_y, valid_x, valid_y = train_val_split(train_data, validation_size)
 
 test_x = test_data.data
 test_y = test_data.targets
@@ -58,4 +53,6 @@ model.apply(init_weights)
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
 CE_loss = torch.nn.CrossEntropyLoss()
 
-train(model, dataloader, optimizer, CE_loss, accuracy)
+train(model, dataloader, optimizer, CE_loss)
+
+evaluate(model, test_x, test_y, CE_loss)

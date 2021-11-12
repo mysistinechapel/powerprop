@@ -4,7 +4,32 @@ import torch
 import torch.nn as nn
 from torch.distributions.categorical import Categorical
 
+from utils.metrics import accuracy, MetricsContainer
 from utils.pp_modules import PowerPropLinear, PowerPropConv
+
+
+def preprocess(data: torch.Tensor):
+    """
+    Preprocess MNIST Data
+    """
+    data = data.flatten(start_dim=1)
+    data = data.float() / 255.
+    return data
+
+
+def train_val_split(data, val_size: int):
+    """
+    Split dataset into training and validation sets.
+
+    Validation set is taken as last 'val_size' records in data.
+    """
+    train_x = data.data[:-val_size]
+    train_y = data.targets[:-val_size]
+
+    valid_x = data.data[-val_size:]
+    valid_y = data.targets[-val_size:]
+
+    return train_x, train_y, valid_x, valid_y
 
 
 def init_weights(module: nn.Module):
@@ -44,19 +69,15 @@ def cat_loss(outputs: torch.Tensor, targets: torch.Tensor):
     return loss
 
 
-def accuracy(outputs: torch.Tensor, targets: torch.Tensor):
-    """ Accuracy """
-    acc = (torch.argmax(outputs, dim=1) == targets).float()
-    return torch.mean(acc)
-
-
-def train(model, data_loader, optimizer, criterion, metric):
+def train(model, data_loader, optimizer, criterion, metric=accuracy):
 
     # TODO dynamic epoch and interval
     epoch = 0
     interval = 100
     losses = []
     accs = []
+
+    metrics = MetricsContainer(batch_size=60)
 
     for idx, (data, target) in enumerate(data_loader):
 
@@ -72,5 +93,28 @@ def train(model, data_loader, optimizer, criterion, metric):
         losses.append(loss.item())
         accs.append(acc.item())
 
+        metrics.update(loss.item(), acc.item())
+
         if idx % interval == 0:
-            print(f'Epoch: [{epoch}][{idx}/{len(data_loader)}]\tLoss {loss.item():.4f}\tAcc {acc.item():.4f}')
+            print(f'Epoch: [{epoch}][{idx}/{len(data_loader)}]\t'
+                  f'Loss={loss.item():.4f} ({metrics.avg_loss:.4f})\t'
+                  f'Acc={acc.item():.4f} ({metrics.avg_acc:.4f})')
+
+
+def evaluate(model, inputs, targets, criterion, metric=accuracy):
+
+    with torch.no_grad():
+        out = model(inputs)
+        loss = criterion(out, targets)
+        acc = metric(out, targets)
+
+    print(f'Test Set:\tLoss={loss.item():.4f}\tAcc={acc.item():.4f}')
+
+
+
+#
+# print(('Epoch: [{0}][{1}/{2}]\t'
+#                    'Time {iter_time.val:.3f} ({iter_time.avg:.3f})\t'
+#                    'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+#                    'Prec @1 {top1.val:.4f} ({top1.avg:.4f})\t')
+#                   .format(epoch, idx, len(data_loader), iter_time=iter_time, loss=losses, top1=acc))
