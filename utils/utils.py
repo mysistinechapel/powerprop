@@ -36,7 +36,10 @@ def init_weights(module: nn.Module):
     if isinstance(module, (PowerPropLinear, PowerPropConv)):
         fan_in = calculate_fan_in(module.w.data)
 
-        std = np.sqrt(1. / fan_in)
+        # constant from scipy.stats.truncnorm.std(a=-2, b=2, loc=0., scale=1.)
+        distribution_stddev = .87962566103423978
+
+        std = np.sqrt(1. / fan_in) / distribution_stddev
         a, b = -2. * std, 2. * std
 
         u = nn.init.trunc_normal_(module.w.data, std=std, a=a, b=b)

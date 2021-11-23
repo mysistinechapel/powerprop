@@ -61,12 +61,12 @@ class TestBackProp(unittest.TestCase):
         cls.x_torch = torch.from_numpy(cls.x)
         cls.y_torch = torch.from_numpy(cls.y)
 
+        cls.model = TorchMLP(alpha=cls.alpha)
+
+        weight_init = PowerPropVarianceScaling(cls.alpha)
+        cls.truth = DensityNetwork(MLP(alpha=cls.alpha, w_init=weight_init))
+
     def setUp(self) -> None:
-        self.model = TorchMLP(alpha=self.alpha)
-
-        weight_init = PowerPropVarianceScaling(self.alpha)
-        self.truth = DensityNetwork(MLP(alpha=self.alpha, w_init=weight_init))
-
         # initialize ground-truth model weights
         self.truth(self.x)
 
