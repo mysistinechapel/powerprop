@@ -47,7 +47,7 @@ class TestBackProp(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.alpha = 1.0
+        cls.alpha = 2.0
         cls.learning_rate = 0.1
 
         x = np.load(r'./test_data/sample_x.npy')
@@ -61,20 +61,21 @@ class TestBackProp(unittest.TestCase):
         cls.x_torch = torch.from_numpy(cls.x)
         cls.y_torch = torch.from_numpy(cls.y)
 
-        cls.model = TorchMLP(alpha=cls.alpha)
-
-        weight_init = PowerPropVarianceScaling(cls.alpha)
-        cls.truth = DensityNetwork(MLP(alpha=cls.alpha, w_init=weight_init))
-
     def setUp(self) -> None:
+        self.model = TorchMLP(alpha=self.alpha)
+
+        weight_init = PowerPropVarianceScaling(self.alpha)
+        self.truth = DensityNetwork(MLP(alpha=self.alpha, w_init=weight_init))
+
         # initialize ground-truth model weights
         self.truth(self.x)
 
         # initialize pytorch variables (set equal to TF variables)
-        tf_weights = self.truth.get_weights()
         with torch.no_grad():
             for i, layer in enumerate(self.model._layers):
-                layer.w = torch.nn.Parameter(torch.from_numpy(tf_weights[i].T))
+                layer.w = torch.nn.Parameter(
+                    torch.from_numpy(self.truth._network._layers[i].w.numpy().T)
+                )
                 layer.b.data.zero_()
 
         self.tf_optim = snt.optimizers.SGD(learning_rate=self.learning_rate)
@@ -83,11 +84,11 @@ class TestBackProp(unittest.TestCase):
 
     def test_weights_matching(self):
         n_layers = len(self.model._layers)
-        tf_weights = self.truth.get_weights()
 
         for i in range(n_layers):
             np.testing.assert_array_equal(
-                tf_weights[i].T, self.model._layers[i].w.detach().numpy(),
+                self.truth._network._layers[i].w.numpy().T,
+                self.model._layers[i].w.detach().numpy(),
                 err_msg=f'Layer {i} weights do not match.'
             )
 
@@ -102,13 +103,13 @@ class TestBackProp(unittest.TestCase):
         tf_stats, tf_grads = tf_train(self.truth, self.x_tf, self.y_tf, self.tf_optim)
         torch_stats, torch_grads = torch_train(self.model, self.x_torch, self.y_torch, self.torch_optim, self.torch_loss)
 
-        self.assertAlmostEqual(tf_stats['acc'].numpy(), torch_stats['acc'], msg='Accuracies do not match')
-        self.assertAlmostEqual(tf_stats['loss'].numpy(), torch_stats['loss'], msg='Losses do not match')
+        self.assertAlmostEqual(tf_stats['acc'].numpy(), torch_stats['acc'], places=6, msg='Accuracies do not match')
+        self.assertAlmostEqual(tf_stats['loss'].numpy(), torch_stats['loss'], places=6, msg='Losses do not match')
 
-        for i, (actual_grad, expected_grad) in enumerate(zip(tf_grads, torch_grads)):
+        for i, (expected_grad, actual_grad) in enumerate(zip(tf_grads, torch_grads)):
             np.testing.assert_allclose(
-                actual_grad.numpy(),
-                expected_grad,
+                expected_grad.numpy(),
+                actual_grad,
                 rtol=1e-5,
                 atol=1e-5,
                 err_msg=f'Layer {i // 2} {"bias" if i % 2 == 0 else "weight"} gradients do not match.'
