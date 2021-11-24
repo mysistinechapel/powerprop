@@ -113,7 +113,47 @@ def evaluate(model, inputs, targets, criterion, metric=accuracy):
 
     print(f'Test Set:\tLoss={loss.item():.4f}\tAcc={acc.item():.4f}')
 
+def evaluate_pruning(model, test_x, test_y):
+    model.requires_grad = False
+    final_weights = model.get_weights()
+    print("FINAL WEIGHTS:", final_weights)
+    eval_at_sparsity_level = np.geomspace(0.01, 1.0, 20).tolist()
 
+    #Deepmind notebook took in a list of models for each alpha.
+    #This initial iteration just looks at the one model
+    models = [model]
+    n_models = len(models)
+    acc_at_sparsity = [[] for _ in range(n_models)]
+    alphas = [1.0]
+    # Half the sparsity at output layer
+    for p_to_use in eval_at_sparsity_level:
+        percent = 2 * [p_to_use] + [min(1.0, p_to_use * 2)]
+        masks = []
+        for i, w in enumerate(final_weights):
+            masks.append(prune_by_magnitude(percent[i], w))
+
+        _, stats = model.loss(test_x, test_y, masks=masks)
+
+        acc_at_sparsity.append(stats['acc'].numpy())
+        print(' Performance @ {:1.0f}% of weights [Alpha {}]: Acc {:1.3f} NLL {:1.3f} '.format(
+            100 * p_to_use, alphas, stats['acc'], stats['loss']))
+
+
+def prune_by_magnitude(percent_to_keep, weight):
+    weight =  weight[0].flatten()
+    mask = _bottom_k_mask(percent_to_keep, np.abs(np.array(weight).flatten(),dtype=float))
+
+    return mask.reshape(weight.shape)
+
+
+def _bottom_k_mask(percent_to_keep, condition):
+    how_many = int(percent_to_keep * condition.size)
+    top_k = torch.topk(torch.as_tensor(condition), k=how_many)
+    mask = np.zeros(shape=condition.shape, dtype=np.float32)
+    mask[top_k.indices.numpy()] = 1
+    assert np.sum(mask) == how_many
+
+    return mask
 
 #
 # print(('Epoch: [{0}][{1}/{2}]\t'
