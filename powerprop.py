@@ -1,11 +1,14 @@
 import torch
 
 from torchvision.datasets import MNIST
+from torchvision.datasets import CIFAR100
+
 from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader, TensorDataset
 
 from utils.pp_modules import MLP
-from utils.utils import preprocess, train_val_split, init_weights, train, evaluate, evaluate_pruning
+from utils.utils import preprocess, train_val_split, init_weights, train, evaluate, evaluate_pruning,\
+plot_sparsity_performance
 
 # Training Configuration
 model_seed = 0  # @param
@@ -36,6 +39,8 @@ test_data = MNIST(
     transform=ToTensor()
 )
 
+
+
 # reshape and normalize data
 train_data.data = preprocess(train_data.data)
 test_data.data = preprocess(test_data.data)
@@ -46,14 +51,25 @@ test_x = test_data.data
 test_y = test_data.targets
 
 dataloader = DataLoader(TensorDataset(train_x, train_y), batch_size=train_batch_size, shuffle=True)
+model_list = []
+model_types = []
+for alpha in alphas:
+    model = MLP(alpha=alpha)
+    model.apply(init_weights)
 
-model = MLP(alpha=alphas[0])
-model.apply(init_weights)
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
+    CE_loss = torch.nn.CrossEntropyLoss()
 
-optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
-CE_loss = torch.nn.CrossEntropyLoss()
+    train(model, dataloader, optimizer, CE_loss)
 
-train(model, dataloader, optimizer, CE_loss)
+    evaluate(model, test_x, test_y, CE_loss)
 
-evaluate(model, test_x, test_y, CE_loss)
-evaluate_pruning(model, test_x, test_y)
+    if alpha > 1.0:
+        model_types.append('Powerprop. ($\\alpha={}$)'.format(alpha))
+    else:
+        model_types.append('Baseline')
+
+    model_list.append(model)
+
+acc_at_sparsity, eval_at_sparsity_level = evaluate_pruning(model_list, test_x, test_y, alphas)
+plot_sparsity_performance(acc_at_sparsity, eval_at_sparsity_level,model_types,dataset_desc="MNIST")
