@@ -5,7 +5,7 @@ from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader, TensorDataset
 
 from utils.pp_modules import MLP
-from utils.utils import preprocess, train_val_split, init_weights, train, evaluate
+from utils.utils import preprocess, train_val_split, init_weights, train, evaluate, evaluate_pruning
 
 # Training Configuration
 model_seed = 0  # @param
@@ -56,3 +56,4 @@ CE_loss = torch.nn.CrossEntropyLoss()
 train(model, dataloader, optimizer, CE_loss)
 
 evaluate(model, test_x, test_y, CE_loss)
+evaluate_pruning(model, test_x, test_y)
