@@ -137,9 +137,7 @@ def evaluate_pruning(models, test_x, test_y, alphas):
 
             _, stats = model_to_use.loss(test_x, test_y, masks=masks)
 
-            print("stats['acc'].numpy():", float(stats['acc'].numpy()))
             acc_at_sparsity[m_id].append(stats['acc'].numpy())
-            print("acc_at_sparsity:", acc_at_sparsity)
             print(' Performance @ {:1.0f}% of weights [Alpha {}]: Acc {:1.3f} NLL {:1.3f} '.format(
                 100 * p_to_use, alphas[m_id], stats['acc'], stats['loss']))
     return acc_at_sparsity, eval_at_sparsity_level
@@ -167,8 +165,6 @@ def plot_sparsity_performance(acc_at_sparsity, eval_at_sparsity_level,model_type
     # @title Plot
     f, ax = plt.subplots(1, 1, figsize=(7, 5))
     for acc, label in zip(acc_at_sparsity, model_types):
-        print("eval_at_sparsity_level:", len(eval_at_sparsity_level))
-        print("acc:", len(acc))
 
         ax.plot(eval_at_sparsity_level, acc, label=label, marker='o', lw=2)
 
