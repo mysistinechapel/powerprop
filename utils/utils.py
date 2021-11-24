@@ -76,13 +76,18 @@ def train(model, data_loader, optimizer, criterion, metric=accuracy):
 
     # TODO dynamic epoch and interval
     epoch = 0
-    interval = 100
+    interval = 2500
     losses = []
     accs = []
 
     metrics = MetricsContainer(batch_size=60)
-
-    for idx, (data, target) in enumerate(data_loader):
+    train_iterator = iter(data_loader)
+    for idx in range(50000 + 1):
+        try:
+            (data, target) = next(train_iterator)
+        except StopIteration:
+            train_iterator = iter(data_loader)
+            (data, target) = next(train_iterator)
 
         optimizer.zero_grad()
 
@@ -99,7 +104,7 @@ def train(model, data_loader, optimizer, criterion, metric=accuracy):
         metrics.update(loss.item(), acc.item())
 
         if idx % interval == 0:
-            print(f'Epoch: [{epoch}][{idx}/{len(data_loader)}]\t'
+            print(f'Interval: [{epoch}]\t'
                   f'Loss={loss.item():.4f} ({metrics.avg_loss:.4f})\t'
                   f'Acc={acc.item():.4f} ({metrics.avg_acc:.4f})')
 
@@ -112,12 +117,3 @@ def evaluate(model, inputs, targets, criterion, metric=accuracy):
         acc = metric(out, targets)
 
     print(f'Test Set:\tLoss={loss.item():.4f}\tAcc={acc.item():.4f}')
-
-
-
-#
-# print(('Epoch: [{0}][{1}/{2}]\t'
-#                    'Time {iter_time.val:.3f} ({iter_time.avg:.3f})\t'
-#                    'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-#                    'Prec @1 {top1.val:.4f} ({top1.avg:.4f})\t')
-#                   .format(epoch, idx, len(data_loader), iter_time=iter_time, loss=losses, top1=acc))
