@@ -51,8 +51,9 @@ class MLP(nn.Module):
                 )
             )
 
+
     def get_weights(self):
-        return [layer.get_weights().numpy() for layer in self._layers]
+        return [layer.get_weights().detach().numpy() for layer in self._layers]
 
     def forward(self, inputs, masks=None):
         num_layers = len(self._layers)
@@ -67,6 +68,16 @@ class MLP(nn.Module):
                 inputs = F.relu(inputs)
 
         return inputs
+
+    def loss(self, inputs, targets, masks=None):
+        with torch.no_grad():
+            outputs = self.forward(inputs, masks)
+            dist = torch.distributions.categorical.Categorical(logits=outputs)
+            loss = -torch.mean(dist.log_prob(targets))
+
+        accuracy = torch.sum(targets == torch.argmax(outputs, axis=1)) / targets.shape[0]
+
+        return loss, {'loss': loss, 'acc': accuracy}
 
 
 class PowerPropConv(nn.Module):
