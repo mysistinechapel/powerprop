@@ -109,7 +109,9 @@ class CNN(nn.Module):
         super(CNN, self).__init__()
         self.alpha = alpha
         self.conv_layers = nn.ModuleDict()
+        self.conv_norms = nn.ModuleList()
         self.fc_layers = nn.ModuleList()
+        self.fc_norms = nn.ModuleList()
 
         # create convolutional layers
         for i, channels in enumerate(out_channels):
@@ -119,6 +121,9 @@ class CNN(nn.Module):
             self.conv_layers[f'ConvLayer{2*i + 2}'] = PowerPropConv(
                 alpha=alpha, in_channels=channels, out_channels=channels
             )
+            self.conv_norms.extend([
+                nn.BatchNorm2d(channels), nn.BatchNorm2d(channels)
+            ])
             in_channels = channels
 
         # create FC layers
@@ -127,6 +132,8 @@ class CNN(nn.Module):
             self.fc_layers.append(
                 PowerPropLinear(alpha=alpha, in_features=in_features, out_features=features)
             )
+            if i < 2:
+                self.fc_norms.append(nn.BatchNorm1d(features))
             in_features = features
 
     def get_weights(self):
@@ -142,7 +149,7 @@ class CNN(nn.Module):
             else:
                 inputs = layer(inputs)
 
-            inputs = F.relu(inputs)
+            inputs = F.relu(self.conv_norms[i](inputs))
             if i % 2 == 1:  # pooling after each pair of conv layers
                 inputs = F.max_pool2d(inputs, kernel_size=2, stride=2)
 
@@ -155,6 +162,6 @@ class CNN(nn.Module):
                 inputs = layer(inputs)
 
             if i < (num_fcs - 1):
-                inputs = F.relu(inputs)
+                inputs = F.relu(self.fc_norms[i](inputs))
 
         return inputs
