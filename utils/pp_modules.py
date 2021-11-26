@@ -76,7 +76,7 @@ class MLP(nn.Module):
 
         accuracy = torch.sum(targets == torch.argmax(outputs, dim=1)) / targets.shape[0]
 
-        return loss, {'loss': loss, 'acc': accuracy}
+        return {'loss': loss, 'acc': accuracy}
 
 
 class PowerPropConv(nn.Module):
@@ -98,7 +98,7 @@ class PowerPropConv(nn.Module):
         if mask is not None:
             weights *= mask
 
-        outputs = F.conv2d(inputs, weights, self.b)
+        outputs = F.conv2d(inputs, weights, self.b, stride=1, padding=1)
 
         return outputs
 
@@ -122,7 +122,7 @@ class CNN(nn.Module):
             in_channels = channels
 
         # create FC layers
-        in_features = 512  # TODO update with expected number
+        in_features = 4096
         for i, features in enumerate((256, 256, 10)):
             self.fc_layers.append(
                 PowerPropLinear(alpha=alpha, in_features=in_features, out_features=features)
@@ -136,18 +136,17 @@ class CNN(nn.Module):
 
     def forward(self, inputs, masks=None):
         for i in range(len(self.conv_layers)):
-            layer = self._layers[f'ConvLayer{i + 1}']
+            layer = self.conv_layers[f'ConvLayer{i + 1}']
             if masks is not None:
                 inputs = layer(inputs, masks[i])
             else:
                 inputs = layer(inputs)
 
-            # if first in conv pair, apply relu, otherwise apply max pool at end of pair
-            if i % 2 == 0:
-                inputs = F.relu(inputs)
-            else:
+            inputs = F.relu(inputs)
+            if i % 2 == 1:  # pooling after each pair of conv layers
                 inputs = F.max_pool2d(inputs, kernel_size=2, stride=2)
 
+        inputs = torch.flatten(inputs, start_dim=1)
         num_fcs = len(self.fc_layers)
         for i, layer in enumerate(self.fc_layers):
             if masks is not None:
