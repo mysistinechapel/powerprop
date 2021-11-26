@@ -1,7 +1,6 @@
 import torch
 
-from torchvision.datasets import MNIST
-from torchvision.datasets import CIFAR10
+from torchvision.datasets import MNIST, CIFAR10
 
 from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader, TensorDataset

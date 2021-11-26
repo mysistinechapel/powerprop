@@ -157,7 +157,6 @@ def plot_sparsity_performance(acc_at_sparsity, eval_at_sparsity_level, model_typ
     sns.set_style("whitegrid")
     sns.set_context("paper")
 
-    # @title Plot
     f, ax = plt.subplots(1, 1, figsize=(7, 5))
     for acc, label in zip(acc_at_sparsity, model_types):
         ax.plot(eval_at_sparsity_level, acc, label=label, marker='o', lw=2)
