@@ -50,10 +50,10 @@ dataloader = DataLoader(TensorDataset(train_x, train_y), batch_size=train_batch_
 model = MLP(alpha=alphas[0])
 model.apply(init_weights)
 
-optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
+optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.0)
 CE_loss = torch.nn.CrossEntropyLoss()
 
 train(model, dataloader, optimizer, CE_loss)
 
 evaluate(model, test_x, test_y, CE_loss)
-evaluate_pruning(model, test_x, test_y)
+evaluate_pruning(model, test_x, test_y, CE_loss)

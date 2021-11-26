@@ -51,7 +51,6 @@ class MLP(nn.Module):
                 )
             )
 
-
     def get_weights(self):
         return [layer.get_weights().detach().numpy() for layer in self._layers]
 
@@ -75,7 +74,7 @@ class MLP(nn.Module):
             dist = torch.distributions.categorical.Categorical(logits=outputs)
             loss = -torch.mean(dist.log_prob(targets))
 
-        accuracy = torch.sum(targets == torch.argmax(outputs, axis=1)) / targets.shape[0]
+        accuracy = torch.sum(targets == torch.argmax(outputs, dim=1)) / targets.shape[0]
 
         return loss, {'loss': loss, 'acc': accuracy}
 

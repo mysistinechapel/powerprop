@@ -73,16 +73,14 @@ def cat_loss(outputs: torch.Tensor, targets: torch.Tensor):
 
 
 def train(model, data_loader, optimizer, criterion, metric=accuracy):
-
-    # TODO dynamic epoch and interval
-    epoch = 0
+    training_steps = 10000
     interval = 2500
     losses = []
     accs = []
 
     metrics = MetricsContainer(batch_size=60)
     train_iterator = iter(data_loader)
-    for idx in range(50000 + 1):
+    for idx in range(training_steps + 1):
         try:
             (data, target) = next(train_iterator)
         except StopIteration:
@@ -104,13 +102,12 @@ def train(model, data_loader, optimizer, criterion, metric=accuracy):
         metrics.update(loss.item(), acc.item())
 
         if idx % interval == 0:
-            print(f'Interval: [{epoch}]\t'
+            print(f'Interval: [{idx // interval}][{idx}/{training_steps}]\t'
                   f'Loss={loss.item():.4f} ({metrics.avg_loss:.4f})\t'
                   f'Acc={acc.item():.4f} ({metrics.avg_acc:.4f})')
 
 
 def evaluate(model, inputs, targets, criterion, metric=accuracy):
-
     with torch.no_grad():
         out = model(inputs)
         loss = criterion(out, targets)
@@ -119,14 +116,14 @@ def evaluate(model, inputs, targets, criterion, metric=accuracy):
     print(f'Test Set:\tLoss={loss.item():.4f}\tAcc={acc.item():.4f}')
 
 
-def evaluate_pruning(model, test_x, test_y):
+def evaluate_pruning(model, test_x, test_y, criterion, metric=accuracy):
     model.requires_grad = False
     final_weights = model.get_weights()
     print("FINAL WEIGHTS:", final_weights)
     eval_at_sparsity_level = np.geomspace(0.01, 1.0, 20).tolist()
 
-    #Deepmind notebook took in a list of models for each alpha.
-    #This initial iteration just looks at the one model
+    # Deepmind notebook took in a list of models for each alpha.
+    # This initial iteration just looks at the one model
     models = [model]
     n_models = len(models)
     acc_at_sparsity = [[] for _ in range(n_models)]
@@ -138,25 +135,26 @@ def evaluate_pruning(model, test_x, test_y):
         for i, w in enumerate(final_weights):
             masks.append(prune_by_magnitude(percent[i], w))
 
-        _, stats = model.loss(test_x, test_y, masks=masks)
+        out = model(test_x, masks=masks)
+        loss = criterion(out, test_y)
+        acc = accuracy(out, test_y)
 
-        acc_at_sparsity.append(stats['acc'].numpy())
-        print(' Performance @ {:1.0f}% of weights [Alpha {}]: Acc {:1.3f} NLL {:1.3f} '.format(
-            100 * p_to_use, alphas, stats['acc'], stats['loss']))
+        acc_at_sparsity.append(acc.item())
+        print(' Performance @ {:1.0f}% of weights [Alpha {}]: Acc {:1.3f} Loss {:1.3f} '.format(
+            100 * p_to_use, alphas, acc.item(), loss.item()))
 
 
 def prune_by_magnitude(percent_to_keep, weight):
-    weight =  weight[0].flatten()
-    mask = _bottom_k_mask(percent_to_keep, np.abs(np.array(weight).flatten(),dtype=float))
-
+    mask = _bottom_k_mask(percent_to_keep, np.abs(weight.flatten()))
     return mask.reshape(weight.shape)
 
 
 def _bottom_k_mask(percent_to_keep, condition):
     how_many = int(percent_to_keep * condition.size)
     top_k = torch.topk(torch.as_tensor(condition), k=how_many)
-    mask = np.zeros(shape=condition.shape, dtype=np.float32)
-    mask[top_k.indices.numpy()] = 1
-    assert np.sum(mask) == how_many
+    mask = torch.zeros(condition.shape)
+    mask[top_k.indices] = 1
+
+    assert torch.sum(mask) == how_many
 
     return mask
