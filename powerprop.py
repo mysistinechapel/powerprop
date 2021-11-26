@@ -1,29 +1,29 @@
 import torch
 
 from torchvision.datasets import MNIST
-from torchvision.datasets import CIFAR100
+from torchvision.datasets import CIFAR10
 
 from torchvision.transforms import ToTensor
 from torch.utils.data import DataLoader, TensorDataset
 
+from utils import utils as uu
 from utils.pp_modules import MLP
-from utils.utils import preprocess, train_val_split, init_weights, train, evaluate, evaluate_pruning, \
-    plot_sparsity_performance
+
+
+model_seed = 0
+torch.manual_seed(model_seed)
 
 # Training Configuration
-model_seed = 0  # @param
-
-alphas = [1.0, 2.0, 3.0, 4.0, 5.0]  # @param
-init_distribution = 'truncated_normal'
-init_mode = 'fan_in'
-init_scale = 1.0
-
-# Fixed values taken from the Lottery Ticket Hypothesis paper
-train_batch_size = 60
+alphas = [1.0, 2.0, 3.0, 4.0, 5.0]
 validation_size = 5000
-num_train_steps = 50000
-learning_rate = 0.1
 report_interval = 2500
+
+# Training Hyperparameters
+train_batch_size = 60
+num_train_steps = 5000
+learning_rate = 0.0025
+momentum = 0.9
+
 
 # Training setup
 train_data = MNIST(
@@ -40,27 +40,29 @@ test_data = MNIST(
 )
 
 # reshape and normalize data
-train_data.data = preprocess(train_data.data)
-test_data.data = preprocess(test_data.data)
+train_data.data = uu.preprocess(train_data.data)
+test_data.data = uu.preprocess(test_data.data)
 
-train_x, train_y, valid_x, valid_y = train_val_split(train_data, validation_size)
+train_x, train_y, valid_x, valid_y = uu.train_val_split(train_data, validation_size)
 
 test_x = test_data.data
 test_y = test_data.targets
 
 dataloader = DataLoader(TensorDataset(train_x, train_y), batch_size=train_batch_size, shuffle=True)
+
 model_list = []
 model_types = []
 for alpha in alphas:
     model = MLP(alpha=alpha)
-    model.apply(init_weights)
+    model.apply(uu.init_weights)
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum)
     CE_loss = torch.nn.CrossEntropyLoss()
 
-    train(model, dataloader, optimizer, CE_loss)
+    uu.train(model, dataloader, optimizer, CE_loss, training_steps=num_train_steps)
 
-    evaluate(model, test_x, test_y, CE_loss)
+    test_loss, test_acc = uu.evaluate(model, test_x, test_y, CE_loss)
+    print(f'Test Set [alpha={alpha}]:\tLoss={test_loss:.4f}\tAcc={test_acc:.4f}')
 
     if alpha > 1.0:
         model_types.append('Powerprop. ($\\alpha={}$)'.format(alpha))
@@ -69,5 +71,6 @@ for alpha in alphas:
 
     model_list.append(model)
 
-acc_at_sparsity, eval_at_sparsity_level = evaluate_pruning(model_list, test_x, test_y, alphas)
-plot_sparsity_performance(acc_at_sparsity, eval_at_sparsity_level, model_types, dataset_desc="MNIST")
+CE_loss = torch.nn.CrossEntropyLoss()
+acc_at_sparsity, eval_at_sparsity_level = uu.evaluate_pruning(model_list, test_x, test_y, alphas, CE_loss)
+uu.plot_sparsity_performance(acc_at_sparsity, eval_at_sparsity_level, model_types, dataset_desc="MNIST")

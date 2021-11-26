@@ -2,9 +2,6 @@
 A PyTorch re-implementation of the following notebook:
 
 https://github.com/deepmind/deepmind-research/blob/master/powerpropagation/powerpropagation.ipynb
-
-
-https://cs230.stanford.edu/blog/pytorch/
 """
 
 import torch

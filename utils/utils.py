@@ -1,4 +1,6 @@
 import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
@@ -6,8 +8,7 @@ from torch.distributions.categorical import Categorical
 
 from utils.metrics import accuracy, MetricsContainer
 from utils.pp_modules import PowerPropLinear, PowerPropConv
-import matplotlib.pyplot as plt
-import seaborn as sns
+
 
 def preprocess(data: torch.Tensor):
     """
@@ -73,8 +74,7 @@ def cat_loss(outputs: torch.Tensor, targets: torch.Tensor):
     return loss
 
 
-def train(model, data_loader, optimizer, criterion, metric=accuracy):
-    training_steps = 50000
+def train(model, data_loader, optimizer, criterion, metric=accuracy, training_steps=10000):
     interval = 2500
     losses = []
     accs = []
@@ -108,36 +108,35 @@ def train(model, data_loader, optimizer, criterion, metric=accuracy):
                   f'Acc={acc.item():.4f} ({metrics.avg_acc:.4f})')
 
 
-def evaluate(model, inputs, targets, criterion, metric=accuracy):
+def evaluate(model, inputs, targets, criterion, masks=None, metric=accuracy):
     with torch.no_grad():
-        out = model(inputs)
+        out = model(inputs, masks)
         loss = criterion(out, targets)
         acc = metric(out, targets)
 
-    print(f'Test Set:\tLoss={loss.item():.4f}\tAcc={acc.item():.4f}')
+    return loss.item(), acc.item()
 
 
-def evaluate_pruning(models, test_x, test_y, alphas):
+def evaluate_pruning(models, test_x, test_y, alphas, criterion):
     final_weights = [m.get_weights() for m in models]
-    eval_at_sparsity_level = np.geomspace(0.01, 1.0, 20).tolist()
+    sparsity_levels = np.geomspace(0.01, 1.0, 20).tolist()
+    acc_at_sparsity = [[] for _ in range(len(models))]
 
-    n_models = len(models)
-    acc_at_sparsity = [[] for _ in range(n_models)]
-
-    # Half the sparsity at output layer
-    for p_to_use in eval_at_sparsity_level:
-        percent = 2 * [p_to_use] + [min(1.0, p_to_use * 2)]
+    for p_to_use in sparsity_levels:
+        # Half the sparsity at output layer
+        percent = [p_to_use, p_to_use, min(1.0, p_to_use * 2.0)]
         for m_id, model_to_use in enumerate(models):
             masks = []
             for i, w in enumerate(final_weights[m_id]):
                 masks.append(prune_by_magnitude(percent[i], w))
 
-            _, stats = model_to_use.loss(test_x, test_y, masks=masks)
+            loss, acc = evaluate(model_to_use, test_x, test_y, criterion, masks=masks)
+            acc_at_sparsity[m_id].append(acc)
 
-            acc_at_sparsity[m_id].append(stats['acc'].numpy())
-            print(' Performance @ {:1.0f}% of weights [Alpha {}]: Acc {:1.3f} NLL {:1.3f} '.format(
-                100 * p_to_use, alphas[m_id], stats['acc'], stats['loss']))
-    return acc_at_sparsity, eval_at_sparsity_level
+            print(f'Performance @ {100 * p_to_use:1.0f}% of weights [alpha={alphas[m_id]}]:\t'
+                  f'Acc={acc:1.3f}\tLoss={loss:1.3f}')
+
+    return acc_at_sparsity, sparsity_levels
 
 
 def prune_by_magnitude(percent_to_keep, weight):
@@ -151,19 +150,16 @@ def _bottom_k_mask(percent_to_keep, condition):
     mask = torch.zeros(condition.shape)
     mask[top_k.indices] = 1
 
-    assert torch.sum(mask) == how_many
-
     return mask
 
 
-def plot_sparsity_performance(acc_at_sparsity, eval_at_sparsity_level,model_types,dataset_desc="MNIST"):
+def plot_sparsity_performance(acc_at_sparsity, eval_at_sparsity_level, model_types, dataset_desc="MNIST"):
     sns.set_style("whitegrid")
     sns.set_context("paper")
 
     # @title Plot
     f, ax = plt.subplots(1, 1, figsize=(7, 5))
     for acc, label in zip(acc_at_sparsity, model_types):
-
         ax.plot(eval_at_sparsity_level, acc, label=label, marker='o', lw=2)
 
     ax.set_xscale('log')
