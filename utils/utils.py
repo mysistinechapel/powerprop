@@ -10,30 +10,6 @@ from utils.metrics import accuracy, MetricsContainer
 from utils.pp_modules import PowerPropLinear, PowerPropConv
 
 
-def preprocess(data: torch.Tensor):
-    """
-    Preprocess MNIST Data
-    """
-    data = data.flatten(start_dim=1)
-    data = data.float() / 255.
-    return data
-
-
-def train_val_split(data, val_size: int):
-    """
-    Split dataset into training and validation sets.
-
-    Validation set is taken as last 'val_size' records in data.
-    """
-    train_x = data.data[:-val_size]
-    train_y = data.targets[:-val_size]
-
-    valid_x = data.data[-val_size:]
-    valid_y = data.targets[-val_size:]
-
-    return train_x, train_y, valid_x, valid_y
-
-
 def init_weights(module: nn.Module):
     if isinstance(module, (PowerPropLinear, PowerPropConv)):
         fan_in = calculate_fan_in(module.w.data)
@@ -140,12 +116,12 @@ def evaluate_pruning(models, test_x, test_y, alphas, criterion):
 
 
 def prune_by_magnitude(percent_to_keep, weight):
-    mask = _bottom_k_mask(percent_to_keep, np.abs(weight.flatten()))
+    mask = _bottom_k_mask(percent_to_keep, torch.abs(weight.flatten()))
     return mask.reshape(weight.shape)
 
 
 def _bottom_k_mask(percent_to_keep, condition):
-    how_many = int(percent_to_keep * condition.size)
+    how_many = int(percent_to_keep * torch.numel(condition))
     top_k = torch.topk(torch.as_tensor(condition), k=how_many)
     mask = torch.zeros(condition.shape)
     mask[top_k.indices] = 1
@@ -170,4 +146,4 @@ def plot_sparsity_performance(acc_at_sparsity, eval_at_sparsity_level, model_typ
 
     sns.despine()
 
-    plt.savefig("images/" + dataset_desc + "_sparsity_performance.png")
+    f.savefig(f'images/{dataset_desc}_sparsity_performance.png')

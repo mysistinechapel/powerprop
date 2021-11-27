@@ -19,7 +19,8 @@ class PowerPropLinear(nn.Module):
         self.b = torch.nn.Parameter(torch.empty(out_features))
 
     def get_weights(self):
-        return torch.sign(self.w) * torch.pow(torch.abs(self.w), self.alpha)
+        weights = self.w.detach()
+        return torch.sign(weights) * torch.pow(torch.abs(weights), self.alpha)
 
     def forward(self, inputs, mask=None):
 
@@ -49,7 +50,7 @@ class MLP(nn.Module):
             )
 
     def get_weights(self):
-        return [layer.get_weights().detach().numpy() for layer in self._layers]
+        return [layer.get_weights() for layer in self._layers]
 
     def forward(self, inputs, masks=None):
         num_layers = len(self._layers)
@@ -86,7 +87,8 @@ class PowerPropConv(nn.Module):
         self.b = torch.nn.Parameter(torch.empty(out_channels))
 
     def get_weights(self):
-        return torch.sign(self.w) * torch.pow(torch.abs(self.w), self.alpha)
+        weights = self.w.detach()
+        return torch.sign(weights) * torch.pow(torch.abs(weights), self.alpha)
 
     def forward(self, inputs, mask=None):
 
@@ -134,8 +136,8 @@ class CNN(nn.Module):
             in_features = features
 
     def get_weights(self):
-        weights = [layer.get_weights().numpy() for layer in self.conv_layers.values()]
-        weights.extend([layer.get_weights().numpy() for layer in self.fc_layers])
+        weights = [layer.get_weights() for layer in self.conv_layers.values()]
+        weights.extend([layer.get_weights() for layer in self.fc_layers])
         return weights
 
     def forward(self, inputs, masks=None):

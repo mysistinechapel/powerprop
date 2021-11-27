@@ -17,7 +17,7 @@ report_interval = 2500
 
 # Training Hyperparameters
 train_batch_size = 60
-num_train_steps = 5000
+num_train_steps = 50000
 learning_rate = 0.0025
 momentum = 0.9
 
