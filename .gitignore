@@ -140,4 +140,3 @@ cython_debug/
 # Additional files/folders to ignore
 .idea/
 data/
-notebooks/
