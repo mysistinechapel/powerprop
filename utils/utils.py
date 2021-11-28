@@ -161,7 +161,6 @@ def plot_pruned_vs_remaining_weights(init_weights, final_weights, chart_name="Ba
     ax.set_xlim([1.0, 0.01])
 
     ax.set_ylim([-10, 10])
-    ax.legend( ["Pruned Weights", "Remaining Weights"])
     ax.set_xlabel('Initial Weight')
     ax.set_ylabel('Remaining Weights')
 
@@ -171,6 +170,7 @@ def plot_pruned_vs_remaining_weights(init_weights, final_weights, chart_name="Ba
 
     plt.scatter(init_weight_samples, y=y, c="red")
     plt.scatter(final_weight_samples, y=y, c="blue")
+    ax.legend( [ "Remaining Weights", "Pruned Weights"])
 
     plt.savefig("images/" + chart_name + "_" + dataset_desc + ".png")
 
