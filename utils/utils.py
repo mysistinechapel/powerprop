@@ -101,7 +101,6 @@ def evaluate_pruning(models, test_x, test_y, alphas, criterion):
     orig_model_weights = [m.get_weights() for m in models]
     sparsity_levels = np.geomspace(0.01, 1.0, 20).tolist()
     acc_at_sparsity = [[] for _ in range(len(models))]
-    all_masks = []
     for p_to_use in sparsity_levels:
         # Half the sparsity at output layer
         percent = [p_to_use, p_to_use, min(1.0, p_to_use * 2.0)]
@@ -112,10 +111,9 @@ def evaluate_pruning(models, test_x, test_y, alphas, criterion):
 
             loss, acc = evaluate(model_to_use, test_x, test_y, criterion, masks=masks)
             acc_at_sparsity[m_id].append(acc)
-            all_masks.append(masks)
             print(f'Performance @ {100 * p_to_use:1.0f}% of weights [alpha={alphas[m_id]}]:\t'
                   f'Acc={acc:1.3f}\tLoss={loss:1.3f}')
-    return acc_at_sparsity, sparsity_levels, all_masks, orig_model_weights
+    return acc_at_sparsity, sparsity_levels, orig_model_weights
 
 
 def prune_by_magnitude(percent_to_keep, weight):
