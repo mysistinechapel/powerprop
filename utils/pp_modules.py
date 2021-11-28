@@ -23,15 +23,12 @@ class PowerPropLinear(nn.Module):
         return torch.sign(weights) * torch.pow(torch.abs(weights), self.alpha)
 
     def forward(self, inputs, mask=None):
-
-        weights = self.w * torch.pow(torch.abs(self.w), self.alpha - 1)
+        weights = self.w * torch.pow(torch.abs(self.w), self.alpha - 1.)
 
         if mask is not None:
             weights *= mask
 
-        outputs = F.linear(inputs, weights, self.b)
-
-        return outputs
+        return F.linear(inputs, weights, self.b)
 
 
 class MLP(nn.Module):
@@ -92,14 +89,12 @@ class PowerPropConv(nn.Module):
 
     def forward(self, inputs, mask=None):
 
-        weights = self.w * torch.pow(torch.abs(self.w), self.alpha - 1)
+        weights = self.w * torch.pow(torch.abs(self.w), self.alpha - 1.)
 
         if mask is not None:
             weights *= mask
 
-        outputs = F.conv2d(inputs, weights, self.b, stride=1, padding=1)
-
-        return outputs
+        return F.conv2d(inputs, weights, self.b, stride=1, padding=1)
 
 
 class CNN(nn.Module):
