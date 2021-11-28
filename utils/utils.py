@@ -89,6 +89,13 @@ def evaluate(model, inputs, targets, criterion, masks=None, metric=accuracy):
 
     return loss.item(), acc.item()
 
+def get_mask_by_perc(perc, model):
+    masks = []
+    orig_model_weights = model.get_weights()
+    for i, w in enumerate(orig_model_weights):
+        masks.append(prune_by_magnitude(perc, w))
+
+    return masks
 
 def evaluate_pruning(models, test_x, test_y, alphas, criterion):
     orig_model_weights = [m.get_weights() for m in models]
