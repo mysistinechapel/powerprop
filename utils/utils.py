@@ -50,41 +50,38 @@ def cat_loss(outputs: torch.Tensor, targets: torch.Tensor):
     return loss
 
 
-def train(model, data_loader, optimizer, criterion, metric=accuracy, training_steps=10000):
+def train(model, data_loader, optimizer, criterion, metric=accuracy, epochs=50):
     interval = 2500
     losses = []
     accs = []
+    metrics = MetricsContainer(batch_size=data_loader.batch_size)
 
-    metrics = MetricsContainer(batch_size=60)
-    train_iterator = iter(data_loader)
-    for idx in range(training_steps + 1):
-        try:
-            (data, target) = next(train_iterator)
-        except StopIteration:
-            train_iterator = iter(data_loader)
-            (data, target) = next(train_iterator)
+    batches = len(data_loader)
+    training_steps = epochs * batches
+    for epoch in range(epochs):
+        for i, (data, targets) in enumerate(data_loader, start=epoch * batches):
+            optimizer.zero_grad()
 
-        optimizer.zero_grad()
+            out = model(data)
+            loss = criterion(out, targets)
+            loss.backward()
 
-        out = model(data)
-        loss = criterion(out, target)
-        loss.backward()
+            optimizer.step()
 
-        optimizer.step()
+            acc = metric(out, targets)
+            losses.append(loss.item())
+            accs.append(acc.item())
 
-        acc = metric(out, target)
-        losses.append(loss.item())
-        accs.append(acc.item())
+            metrics.update(loss.item(), acc.item())
 
-        metrics.update(loss.item(), acc.item())
-
-        if idx % interval == 0:
-            print(f'Interval: [{idx // interval}][{idx}/{training_steps}]\t'
-                  f'Loss={loss.item():.4f} ({metrics.avg_loss:.4f})\t'
-                  f'Acc={acc.item():.4f} ({metrics.avg_acc:.4f})')
+            if i % interval == 0:
+                print(f'Epoch: [{epoch + 1}/{epochs}][{i}/{training_steps}]\t'
+                      f'Loss={loss.item():.4f} ({metrics.avg_loss:.4f})\t'
+                      f'Acc={acc.item():.4f} ({metrics.avg_acc:.4f})')
 
 
 def evaluate(model, inputs, targets, criterion, masks=None, metric=accuracy):
+    model.eval()
     with torch.no_grad():
         out = model(inputs, masks)
         loss = criterion(out, targets)

@@ -25,18 +25,21 @@ momentum = 0.9
 train_x, train_y = load_data(dataset, train=True)
 test_x, test_y = load_data(dataset, train=False)
 
-dataloader = DataLoader(TensorDataset(train_x, train_y), batch_size=train_batch_size, shuffle=True)
+epochs = int(num_train_steps * train_batch_size / train_x.shape[0])
+dataset = TensorDataset(train_x, train_y)
+dataloader = DataLoader(dataset, batch_size=train_batch_size, shuffle=True)
 
 model_list = []
 model_types = []
 for alpha in alphas:
     model = MLP(alpha=alpha)
     model.apply(uu.init_weights)
+    model.train()
 
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum)
     CE_loss = torch.nn.CrossEntropyLoss()
 
-    uu.train(model, dataloader, optimizer, CE_loss, training_steps=num_train_steps)
+    uu.train(model, dataloader, optimizer, CE_loss, epochs=epochs)
 
     test_loss, test_acc = uu.evaluate(model, test_x, test_y, CE_loss)
     print(f'Test Set [alpha={alpha}]:\tLoss={test_loss:.4f}\tAcc={test_acc:.4f}')

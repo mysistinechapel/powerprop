@@ -65,21 +65,21 @@ def load_data(dataset, train=True):
         raise ValueError(f'Dataset must be one of {", ".join(VALID_DATASETS)}.')
 
     if dataset == 'MNIST':
-        train_data = MNIST(
+        data = MNIST(
             root=r'../data/',
             train=train,
             download=True,
             transform=ToTensor(),
         )
     else:
-        train_data = CIFAR10(
+        data = CIFAR10(
             root=r'../data/',
             train=train,
             download=True,
             transform=ToTensor(),
         )
 
-    x = preprocess(train_data.data, dataset)
-    y = torch.as_tensor(train_data.targets)
+    x = preprocess(data.data, dataset)
+    y = torch.as_tensor(data.targets)
 
     return x, y
