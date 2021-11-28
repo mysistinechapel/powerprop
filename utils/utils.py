@@ -175,8 +175,8 @@ def plot_pruned_vs_remaining_weights(init_weights, final_weights, chart_name="Ba
     init_weight_samples = np.random.choice(init_weights, size=5000, replace=False, p=None)
 
     plt.scatter(init_weight_samples, y=y, c="red")
-    #plt.scatter(final_weight_samples, y=y, c="blue")
-    #ax.legend( [ "Remaining Weights", "Pruned Weights"])
+    plt.scatter(final_weight_samples, y=y, c="blue")
+    ax.legend( [ "Remaining Weights", "Pruned Weights"])
 
     plt.savefig("images/" + chart_name + "_" + dataset_desc + ".png")
 
