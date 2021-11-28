@@ -1,7 +1,7 @@
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-
+import random
 import torch
 import torch.nn as nn
 from torch.distributions.categorical import Categorical
@@ -94,25 +94,24 @@ def evaluate(model, inputs, targets, criterion, masks=None, metric=accuracy):
 
 
 def evaluate_pruning(models, test_x, test_y, alphas, criterion):
-    final_weights = [m.get_weights() for m in models]
+    orig_model_weights = [m.get_weights() for m in models]
     sparsity_levels = np.geomspace(0.01, 1.0, 20).tolist()
     acc_at_sparsity = [[] for _ in range(len(models))]
-
+    all_masks = []
     for p_to_use in sparsity_levels:
         # Half the sparsity at output layer
         percent = [p_to_use, p_to_use, min(1.0, p_to_use * 2.0)]
         for m_id, model_to_use in enumerate(models):
             masks = []
-            for i, w in enumerate(final_weights[m_id]):
+            for i, w in enumerate(orig_model_weights[m_id]):
                 masks.append(prune_by_magnitude(percent[i], w))
 
             loss, acc = evaluate(model_to_use, test_x, test_y, criterion, masks=masks)
             acc_at_sparsity[m_id].append(acc)
-
+            all_masks.append(masks)
             print(f'Performance @ {100 * p_to_use:1.0f}% of weights [alpha={alphas[m_id]}]:\t'
                   f'Acc={acc:1.3f}\tLoss={loss:1.3f}')
-
-    return acc_at_sparsity, sparsity_levels
+    return acc_at_sparsity, sparsity_levels, all_masks, orig_model_weights
 
 
 def prune_by_magnitude(percent_to_keep, weight):
@@ -146,4 +145,31 @@ def plot_sparsity_performance(acc_at_sparsity, eval_at_sparsity_level, model_typ
 
     sns.despine()
 
-    f.savefig(f'images/{dataset_desc}_sparsity_performance.png')
+    plt.savefig("images/" + dataset_desc + "_sparsity_performance.png")
+
+def plot_pruned_vs_remaining_weights(init_weights, final_weights, chart_name="Baseline", dataset_desc="CIFAR"):
+    sns.set_style("whitegrid")
+    sns.set_context("paper")
+    f, ax = plt.subplots(1, 1, figsize=(7, 5))
+    init_weights = init_weights[0].flatten()
+    final_weights = final_weights.flatten().detach().numpy()
+    y = np.arange(-10, 10, .002)
+
+    ax.set_xscale('log')
+    ax.set_xlim([1.0, 0.01])
+
+    ax.set_ylim([-10, 10])
+    ax.legend( ["Pruned Weights", "Remaining Weights"])
+    ax.set_xlabel('Initial Weight')
+    ax.set_ylabel('Remaining Weights')
+
+
+    final_weight_samples = np.random.choice(final_weights, size=10000, replace=False, p=None)
+    init_weight_samples = np.random.choice(init_weights, size=10000, replace=False, p=None)
+
+    plt.scatter(init_weight_samples, y=y, c="red")
+    plt.scatter(final_weight_samples, y=y, c="blue")
+
+    plt.savefig("images/" + chart_name + "_" + dataset_desc + ".png")
+
+
