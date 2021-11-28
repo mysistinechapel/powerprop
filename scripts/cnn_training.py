@@ -34,9 +34,16 @@ dataloader = DataLoader(dataset, batch_size=train_batch_size, shuffle=True, drop
 
 model_list = []
 model_types = []
+init_weights_list = []
+
 for alpha in alphas:
     model = CNN(alpha=alpha)
     model.apply(uu.init_weights)
+
+    #Capturing initial weights to be used later for plots
+    init_weights = uu.get_init_weights(model).flatten()
+    init_weights_list.append(init_weights)
+
     model.train()
 
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum)
@@ -57,3 +64,11 @@ for alpha in alphas:
 CE_loss = torch.nn.CrossEntropyLoss()
 acc_at_sparsity, eval_at_sparsity_level = uu.evaluate_pruning(model_list, test_x, test_y, alphas, CE_loss)
 uu.plot_sparsity_performance(acc_at_sparsity, eval_at_sparsity_level, model_types, dataset_desc=dataset)
+
+masks_test = uu.get_mask_by_perc(.1, model_list[0])
+pruned_weights = model_list[0].forward(test_x, masks_test)
+uu.plot_pruned_vs_remaining_weights(init_weights_list[0], pruned_weights, chart_name="Baseline", dataset_desc="CIFAR")
+
+masks_test = uu.get_mask_by_perc(.1, model_list[0])
+pruned_weights = model_list[4].forward(test_x, masks_test)
+uu.plot_pruned_vs_remaining_weights(init_weights_list[0], pruned_weights, chart_name="High_Alpha", dataset_desc="CIFAR")

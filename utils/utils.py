@@ -113,7 +113,7 @@ def evaluate_pruning(models, test_x, test_y, alphas, criterion):
             acc_at_sparsity[m_id].append(acc)
             print(f'Performance @ {100 * p_to_use:1.0f}% of weights [alpha={alphas[m_id]}]:\t'
                   f'Acc={acc:1.3f}\tLoss={loss:1.3f}')
-    return acc_at_sparsity, sparsity_levels, orig_model_weights
+    return acc_at_sparsity, sparsity_levels
 
 
 def prune_by_magnitude(percent_to_keep, weight):
@@ -129,6 +129,12 @@ def _bottom_k_mask(percent_to_keep, condition):
 
     return mask
 
+def get_init_weights(model):
+    weight_list = []
+    for layer in model.children():
+        weights = list(layer.parameters())[0]  # because it's a generator
+        weight_list.append(weights)
+    return torch.cat(weight_list, dim=1)
 
 def plot_sparsity_performance(acc_at_sparsity, eval_at_sparsity_level, model_types, dataset_desc="MNIST"):
     sns.set_style("whitegrid")
@@ -153,24 +159,24 @@ def plot_pruned_vs_remaining_weights(init_weights, final_weights, chart_name="Ba
     sns.set_style("whitegrid")
     sns.set_context("paper")
     f, ax = plt.subplots(1, 1, figsize=(7, 5))
-    init_weights = init_weights[0].flatten()
+    init_weights = init_weights.detach().numpy()
     final_weights = final_weights.flatten().detach().numpy()
-    y = np.arange(-10, 10, .002)
+    y = np.arange(-10, 10, .004)
 
     ax.set_xscale('log')
     ax.set_xlim([1.0, 0.01])
 
     ax.set_ylim([-10, 10])
     ax.set_xlabel('Initial Weight')
-    ax.set_ylabel('Remaining Weights')
+    ax.set_ylabel('Final Weight')
 
 
-    final_weight_samples = np.random.choice(final_weights, size=10000, replace=False, p=None)
-    init_weight_samples = np.random.choice(init_weights, size=10000, replace=False, p=None)
+    final_weight_samples = np.random.choice(final_weights, size=5000, replace=False, p=None)
+    init_weight_samples = np.random.choice(init_weights, size=5000, replace=False, p=None)
 
     plt.scatter(init_weight_samples, y=y, c="red")
-    plt.scatter(final_weight_samples, y=y, c="blue")
-    ax.legend( [ "Remaining Weights", "Pruned Weights"])
+    #plt.scatter(final_weight_samples, y=y, c="blue")
+    #ax.legend( [ "Remaining Weights", "Pruned Weights"])
 
     plt.savefig("images/" + chart_name + "_" + dataset_desc + ".png")
 
