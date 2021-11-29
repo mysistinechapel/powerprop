@@ -1,51 +1,75 @@
 import torch
-import torchvision
-import torchvision.datasets as datasets
-from torch.utils.data import random_split
+
+from torchvision.datasets import MNIST, CIFAR10
 
 from torchvision.transforms import ToTensor
+from torch.utils.data import DataLoader, TensorDataset
 
-#Training Configuration
-model_seed = 0  #@param
+from utils import utils as uu
+from utils.pp_modules import MLP
 
-alphas = [1.0, 2.0, 3.0, 4.0, 5.0]  #@param
-init_distribution = 'truncated_normal'
-init_mode = 'fan_in'
-init_scale = 1.0
 
-# Fixed values taken from the Lottery Ticket Hypothesis paper
-train_batch_size = 60
-num_train_steps = 50000
-learning_rate = 0.1
+model_seed = 0
+torch.manual_seed(model_seed)
+
+# Training Configuration
+alphas = [1.0, 2.0, 3.0, 4.0, 5.0]
+validation_size = 5000
 report_interval = 2500
 
-#Training setup
-train_data = datasets.MNIST(
-    root = 'data',
-    train = True,
-    transform = ToTensor(),
-    download = True
+# Training Hyperparameters
+train_batch_size = 60
+num_train_steps = 5000
+learning_rate = 0.0025
+momentum = 0.9
+
+
+# Training setup
+train_data = MNIST(
+    root='./data/',
+    train=True,
+    download=True,
+    transform=ToTensor(),
 )
-test_data = datasets.MNIST(
-    root = 'data',
-    train = False,
-    transform = ToTensor()
+test_data = MNIST(
+    root='./data/',
+    train=False,
+    download=True,
+    transform=ToTensor()
 )
 
-# calculate size of train and validation sets. 80% train and 20% validation
-train_size = int(0.8 * len(train_data.train_data))
-valid_size = len(train_data.train_data) - train_size
+# reshape and normalize data
+train_data.data = uu.preprocess(train_data.data)
+test_data.data = uu.preprocess(test_data.data)
 
-#Randomly split the train and validation sets
-partial_train_data, validation_data = random_split(train_data, [train_size, valid_size])
+train_x, train_y, valid_x, valid_y = uu.train_val_split(train_data, validation_size)
 
-train_x = partial_train_data.dataset.train_data
-train_y = partial_train_data.dataset.train_labels
+test_x = test_data.data
+test_y = test_data.targets
 
-val_x = validation_data.dataset.train_data
-val_y = validation_data.dataset.train_labels
+dataloader = DataLoader(TensorDataset(train_x, train_y), batch_size=train_batch_size, shuffle=True)
 
-test_x = test_data.test_data
-test_y = test_data.test_labels
+model_list = []
+model_types = []
+for alpha in alphas:
+    model = MLP(alpha=alpha)
+    model.apply(uu.init_weights)
 
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum)
+    CE_loss = torch.nn.CrossEntropyLoss()
 
+    uu.train(model, dataloader, optimizer, CE_loss, training_steps=num_train_steps)
+
+    test_loss, test_acc = uu.evaluate(model, test_x, test_y, CE_loss)
+    print(f'Test Set [alpha={alpha}]:\tLoss={test_loss:.4f}\tAcc={test_acc:.4f}')
+
+    if alpha > 1.0:
+        model_types.append('Powerprop. ($\\alpha={}$)'.format(alpha))
+    else:
+        model_types.append('Baseline')
+
+    model_list.append(model)
+
+CE_loss = torch.nn.CrossEntropyLoss()
+acc_at_sparsity, eval_at_sparsity_level = uu.evaluate_pruning(model_list, test_x, test_y, alphas, CE_loss)
+uu.plot_sparsity_performance(acc_at_sparsity, eval_at_sparsity_level, model_types, dataset_desc="MNIST")
