@@ -1,7 +1,7 @@
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-import random
+
 import torch
 import torch.nn as nn
 from torch.distributions.categorical import Categorical
@@ -17,7 +17,7 @@ def init_weights(module: nn.Module):
         # constant from scipy.stats.truncnorm.std(a=-2, b=2, loc=0., scale=1.)
         distribution_stddev = .87962566103423978
 
-        std = np.sqrt(1. / fan_in) / distribution_stddev
+        std = torch.sqrt(1. / fan_in) / distribution_stddev
         a, b = -2. * std, 2. * std
 
         u = nn.init.trunc_normal_(module.w.data, std=std, a=a, b=b)
@@ -52,8 +52,6 @@ def cat_loss(outputs: torch.Tensor, targets: torch.Tensor):
 
 def train(model, data_loader, optimizer, criterion, metric=accuracy, epochs=50):
     interval = 2500
-    losses = []
-    accs = []
     metrics = MetricsContainer(batch_size=data_loader.batch_size)
 
     batches = len(data_loader)
@@ -69,9 +67,6 @@ def train(model, data_loader, optimizer, criterion, metric=accuracy, epochs=50):
             optimizer.step()
 
             acc = metric(out, targets)
-            losses.append(loss.item())
-            accs.append(acc.item())
-
             metrics.update(loss.item(), acc.item())
 
             if i % interval == 0:
