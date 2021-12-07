@@ -120,7 +120,7 @@ class CNN(nn.Module):
             in_channels = channels
 
         # create FC layers
-        in_features = 4096
+        in_features = out_channels[-1] * 16
         for features in (256, 256, 10):
             self.fc_layers.append(
                 PowerPropLinear(alpha=alpha, in_features=in_features, out_features=features)
@@ -155,7 +155,7 @@ class CNN(nn.Module):
 
 
 class PlainCNN(nn.Module):
-    """A convolutional neural network module."""
+    """For verification purposes only."""
     def __init__(self, in_channels=3, out_channels=(64, 128, 256)):
         super(PlainCNN, self).__init__()
         self.network = nn.Sequential()
@@ -171,7 +171,7 @@ class PlainCNN(nn.Module):
 
         self.network.add_module('Flatten', nn.Flatten(start_dim=1))
         # create FC layers
-        in_features = 4096
+        in_features = out_channels[-1] * 16
         for i, features in enumerate([256, 256, 10]):
             self.network.add_module(
                 f'Linear{i + 1}',
