@@ -174,5 +174,3 @@ def plot_pruned_vs_remaining_weights(init_weights, final_weights, chart_name="Ba
     ax.legend( [ "Remaining Weights", "Pruned Weights"])
 
     plt.savefig("images/" + chart_name + "_" + dataset_desc + ".png")
-
-
