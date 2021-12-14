@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 
-import torch
 import unittest
 
 from utils.pp_modules import PowerPropLinear as TorchLinear
